@@ -1,1 +1,10 @@
 .DS_Store
+annotations/*
+!annotations/README.md
+backgrounds/*
+!backgrounds/README.md
+output/*
+!output/README.md
+*.idx
+*.lst
+*.rec
