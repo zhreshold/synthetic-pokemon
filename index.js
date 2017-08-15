@@ -16,7 +16,7 @@ var pause = false;
 var bg_mesh;
 var global_counter = 0;
 var counter_limit = 1000;
-var backgrounds = {};
+var backgrounds = [];
 var alight;
 var dlight;
 
@@ -24,13 +24,18 @@ var folder = "output";
 var annotation_foler = "annotations";
 var label;
 
+var exts = ['.png', '.jpg', '.jpeg'];
 
+var bg_images = list_images('backgrounds', exts);
+// shuffle(bg_images);
+// bg_images = bg_images.slice(0, Math.min(50, bg_images.length));
+// console.log('bg_images', bg_images.length);
 init();
 fiber(function() {
-  await(load_backgrounds(['pokemon.png', 'pokemon1.jpg'], defer()));
+  // await(load_backgrounds(bg_images, defer()));
   await(load_models(available_models, defer()));
   await(lock(defer()));
-  await(randomize(100, defer()));
+  await(randomize(1000, defer()));
   // var result = await(lock(models, defer()));
 });
 
@@ -40,6 +45,13 @@ fiber(function() {
 // load_backgrounds(['pokemon.png', 'pokemon1.jpg'])
 // randomize(10);
 
+function shuffle(a) {
+    for (let i = a.length; i; i--) {
+        let j = Math.floor(Math.random() * i);
+        [a[i - 1], a[j]] = [a[j], a[i - 1]];
+    }
+}
+
 function lock(cb) {
   //
   console.log('abc')
@@ -48,16 +60,49 @@ function lock(cb) {
   // console.log(bgs)
 }
 
+function list_images(dir, exts) {
+  lists = [];
+  // require('fs').readdirSync(dir).forEach(function(file) {
+  //   if (exts.indexOf(path.extname(file)) >= 0 ) {
+  //     lists.push(file);
+  //     console.log('file', file);
+  //   }
+  // })
+  var recursiveReadSync = require('recursive-readdir-sync');
+  var files;
+
+  try {
+    files = recursiveReadSync(dir);
+  } catch(err){
+    if(err.errno === 34){
+      console.log('Path does not exist');
+    } else {
+      //something unrelated went wrong, rethrow
+      throw err;
+    }
+  }
+  files.forEach(function(file) {
+    if (exts.indexOf(path.extname(file)) >= 0 ) {
+      lists.push(file);
+      // console.log('file', file);
+    }
+  })
+
+  return lists;
+}
+
 function randomize(time, cb) {
   for (var j = 0; j < time; ++j) {
     // pause = false;
-    random_background(['pokemon.png', 'pokemon1.jpg']);
-    random_scene(available_models, "out.jpg");
-    // pause = false;
-    random_animate(['pokemon.png', 'pokemon1.jpg'], available_models, "out.jpg");
-    // pause = true;
-    cancelAnimationFrame( id );
-    save_image(path.join(folder, 'out'));
+    random_background(function () {
+      random_scene(available_models, "out.jpg");
+      // pause = false;
+      random_animate(['pokemon.png', 'pokemon1.jpg'], available_models, "out.jpg");
+      // pause = true;
+      cancelAnimationFrame( id );
+      save_image(path.join(folder, 'out'));
+    });
+
   }
   cb();
 }
@@ -132,7 +177,8 @@ function load_backgrounds(choices, cb) {
   for (var i in choices) {
     (function(index) {
       var choice = choices[index];
-      choice_path = path.join('./backgrounds/', choice);
+      // choice_path = path.join('./backgrounds/', choice);
+      choice_path = choice;
       console.log(choice_path);
       // var texture_loader = new THREE.TextureLoader();
       // var texture;
@@ -140,7 +186,7 @@ function load_backgrounds(choices, cb) {
         choice_path,
         function ( texture ) {
         // do something with the texture
-          backgrounds[choice] = texture;
+          backgrounds.push(texture);
           // task_count += 1;
           console.log("loaded", choice);
           if (--task_count === 0) {
@@ -162,36 +208,47 @@ function load_backgrounds(choices, cb) {
     })(i);
   }
   return backgrounds;
-  // var num_task = choices.length;
-  // var task_count = 0;
-  // // console.log(choices);
-  // for (var i in choices) {
-  //   (function(index) {
-  //     var choice = choices[index];
-  //     choice_path = path.join('./backgrounds/', choice);
-  //     console.log(choice_path);
-  //     var texture_loader = new THREE.TextureLoader();
-  //     var texture;
-  //     texture = texture_loader.load(
-  //       choice_path,
-  //       function ( texture ) {
-  //   		// do something with the texture
-  //   		  backgrounds[choice] = texture;
-  //         task_count += 1;
-  //         console.log("loaded", choice);
-  //     	},
-  //     	// Function called when download progresses
-  //     	function ( xhr ) {
-  //     		console.log( (xhr.loaded / xhr.total * 100) + '% texture loaded' );
-  //     	},
-  //     	// Function called when download errors
-  //     	function ( xhr ) {
-  //     		console.log( 'An error happened' );
-  //         task_count += 1;
-  //     	}
-  //     );
-  //   })(i);
+}
+
+function random_background0() {
+  var randint = rand_int(0, backgrounds.length);
+  // bg = choices[randint];
+  var texture = backgrounds[randint];
+  bg_mesh.material.map = texture;
+  // var texture = texture_loader.load(bg, function ( texture ) {
+  //   bg_mesh.material.map = texture;
+  //   console.log("texture loaded.");
+  //   load_models(available_models);
+  // });
+}
+
+function random_background(cb) {
+  var randint = rand_int(0, bg_images.length);
+  var bg_img = bg_images[randint];
+  var loader = new THREE.TextureLoader();
+  var texture;
+  var done = false;
+  console.log('bg_img', bg_img);
+  texture = loader.load(
+    bg_img,
+    function (t) {
+      texture = t;
+      bg_mesh.material.map = texture;
+      cb();
+    },
+    // Function called when download progresses
+    function ( xhr ) {
+      console.log( (xhr.loaded / xhr.total * 100) + '% texture loaded' );
+    },
+    // Function called when download errors
+    function ( xhr ) {
+    }
+  )
+  // while (!done) {
+  //   console.log('not done');
+  //   require('deasync').runLoopOnce();
   // }
+
 }
 
 function rand_int(start, end) {
@@ -228,17 +285,7 @@ function init() {
   document.body.appendChild(renderer.domElement);
 }
 
-function random_background(choices) {
-  randint = rand_int(0, choices.length);
-  bg = choices[randint];
-  var texture = backgrounds[bg];
-  bg_mesh.material.map = texture;
-  // var texture = texture_loader.load(bg, function ( texture ) {
-  //   bg_mesh.material.map = texture;
-  //   console.log("texture loaded.");
-  //   load_models(available_models);
-  // });
-}
+
 
 function point2d_from_vector(vector, camera) {
   var p = vector.clone();
@@ -261,39 +308,11 @@ function calc2Dpoint(v) {
     var vector = projector.projectVector( new THREE.Vector3( v.x, v.y, v.z ), camera );
     console.log('vector', vector, v.x, v.y, v.z);
     var result = new Object();
-    // result.x = Math.round(vector.x * (renderer.domElement.width/2));
-    // result.y = Math.round(vector.y * (renderer.domElement.height/2));
-    result.x = 0;
-    result.y = 0;
+    result.x = Math.round(vector.x * (renderer.domElement.width/2));
+    result.y = Math.round(vector.y * (renderer.domElement.height/2));
     return result;
 
 }
-
-function screenXY(obj){
-
-  var vector = obj.clone();
-  var windowWidth = window.innerWidth;
-  var minWidth = 100;
-
-  if(windowWidth < minWidth) {
-    windowWidth = minWidth;
-  }
-
-  var widthHalf = (windowWidth/2);
-  var heightHalf = (window.innerHeight/2);
-
-  console.log('before', vector.x, vector.y, vector.z);
-  vector.project(camera);
-  console.log('after', vector.x, vector.y, vector.z);
-
-
-  vector.x = ( vector.x * widthHalf ) + widthHalf;
-  vector.y = - ( vector.y * heightHalf ) + heightHalf;
-  vector.z = 0;
-
-  return vector;
-
-};
 
 var to2D = function ( pos ) {
 
@@ -311,8 +330,8 @@ var to2D = function ( pos ) {
 function bbox2d_from_object0(obj) {
   var bbox3d = new THREE.Box3().setFromObject(obj);
   console.log(bbox3d);
-  var p = screenXY(bbox3d.min);
-  var q = screenXY(bbox3d.max);
+  var p = to2D(bbox3d.min);
+  var q = to2D(bbox3d.max);
   console.log('p', p.x, p.y, 'q', q.x, q.y);
   xmin = Math.min(p.x, q.x);
   ymin = Math.min(p.y, q.y);
@@ -344,6 +363,30 @@ function bbox2d_from_object(obj) {
   return [x_min + cx, y_min + cy, x_max + cx, y_max + cy];
 }
 
+function get_bbox(obj, camera) {
+  var vFOV = camera.fov * Math.PI / 180;        // convert vertical fov to radians
+  var dist = camera.position.z;
+  var height = 2 * Math.tan( vFOV / 2 ) * dist; // visible height
+  var bbox = new THREE.Box3().setFromObject(obj);
+  var bh = Math.abs(bbox.max.y - bbox.min.y);
+  var bw = Math.abs(bbox.max.x - bbox.min.x);
+  var fraction = height / canvas.height;
+  var box_h = bh / fraction;
+  var box_w = bw /fraction;
+  var box_x = canvas.width / 2 + obj.position.x  /  fraction;
+  var box_y = canvas.height / 2 - obj.position.y / fraction * bh / bw;
+  var cx = canvas.width / 2;
+  var cy = canvas.height / 2;
+  var x1 = cx + bbox.min.x / fraction;
+  var x2 = cx + bbox.max.x / fraction;
+  var y1 = cy - bbox.min.y / fraction;
+  var y2 = cy - bbox.max.y / fraction;
+  console.log('fraction', fraction, x1, x2, y1, y2);
+  return [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
+  return [box_x - box_w / 2, box_y - box_h / 2, box_x + box_w / 2, box_y + box_h / 2];
+}
+
+
 function reset_label() {
   label = {};
   label["folder"] = folder;
@@ -361,7 +404,7 @@ function add_object_to_label(box, name) {
 function random_scene(names, fname) {
   // aspect = window.innerWidth / window.innerHeight;
 
-  dist = rand_int(100, 300);
+  dist = rand_int(200, 300);
   // console.log("camera ", dist);
   camera.position.z = dist;
   // var vfov = camera.fov * Math.PI / 180;
@@ -382,18 +425,19 @@ function random_scene(names, fname) {
     model_library[name].position.z = 0; //rand_int(-30, 30);
     // var box2d = bbox2d_from_object(model_library[name], camera);
     // console.log(name, box2d);
-    var helper = new THREE.BoxHelper(model_library[name], 0xff0000);
-    helper.update();
+    // var helper = new THREE.BoxHelper(model_library[name], 0xff0000);
+    // helper.update();
     // var box3 = new THREE.Box3().setFromObject(helper);
     // console.log('box3', box3);
     // var size = new THREE.Vector3();
     // box3.getSize(size);
     // console.log('size', size);
-    var bbox = bbox2d_from_object0(model_library[name]);
+    // var bbox = bbox2d_from_object0(model_library[name]);
+    var bbox = get_bbox(model_library[name], camera);
     console.log(bbox[2] - bbox[0], bbox[3] - bbox[1]);
     add_object_to_label(bbox, name);
     // If you want a visible bounding box
-    scene.add(helper);
+    // scene.add(helper);
     // var bbox = bbox2d_from_object()
     // console.log("name", name, model_library, model_library[name], Object.keys(model_library));
     scene.add(model_library[name]);

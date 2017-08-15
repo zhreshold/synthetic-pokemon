@@ -3,6 +3,9 @@ annotations/*
 !annotations/README.md
 output/*
 !output/README.md
+backgrounds/*
+!backgrounds/README.md
+node_modules/*
 *.idx
 *.lst
 *.rec

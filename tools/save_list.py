@@ -7,6 +7,9 @@ import subprocess
 import multiprocessing
 cpu_count = multiprocessing.cpu_count()
 
+def clip(x, min_val=0, max_val=1):
+    return min(max_val, max(min_val, x))
+
 def parse_annotation(fname):
     with open(fname, 'r') as f:
         data = json.load(f)
@@ -22,7 +25,7 @@ def parse_annotation(fname):
             y /= height
             w /= width
             h /= height
-            label += [0, x, y, x + w, y + h]
+            label += [0, clip(x), clip(y), clip(x + w), clip(y + h)]
         return [4, 5, width, height] + label + [path]
     return []
 
