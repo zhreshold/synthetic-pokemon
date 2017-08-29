@@ -35,7 +35,7 @@ fiber(function() {
   // await(load_backgrounds(bg_images, defer()));
   await(load_models(available_models, defer()));
   await(lock(defer()));
-  await(randomize(1000, defer()));
+  await(randomize(1, defer()));
   // var result = await(lock(models, defer()));
 });
 
@@ -401,10 +401,14 @@ function add_object_to_label(box, name) {
   label["objects"].push(obj);
 }
 
+function clone(a) {
+   return JSON.parse(JSON.stringify(a));
+}
+
 function random_scene(names, fname) {
   // aspect = window.innerWidth / window.innerHeight;
 
-  dist = rand_int(200, 300);
+  dist = rand_int(100, 150);
   // console.log("camera ", dist);
   camera.position.z = dist;
   // var vfov = camera.fov * Math.PI / 180;
@@ -415,14 +419,16 @@ function random_scene(names, fname) {
   scene = new THREE.Scene();
   scene.add(camera);
   reset_label();
+  for (var zz = 0; zz < 3; ++zz) {
+    model_library['pikachu'].position.z = rand_int(-30, 30);
   for (var i in names) {
     var name = names[i];
     model_library[name].rotation.x = rand_int(-10, 45) * Math.PI / 180;
     model_library[name].rotation.y = rand_normal(45) * Math.PI / 180;
     model_library[name].rotation.z = rand_int(0, 0) * Math.PI / 180;
-    model_library[name].position.x = rand_int(-60, 60);
-    model_library[name].position.y = rand_int(-30, 30);
-    model_library[name].position.z = 0; //rand_int(-30, 30);
+    model_library[name].position.x = rand_int(-100, 100);
+    model_library[name].position.y = rand_int(-50, 50);
+    // model_library[name].position.z = 0; //rand_int(-30, 30);
     // var box2d = bbox2d_from_object(model_library[name], camera);
     // console.log(name, box2d);
     // var helper = new THREE.BoxHelper(model_library[name], 0xff0000);
@@ -440,8 +446,8 @@ function random_scene(names, fname) {
     // scene.add(helper);
     // var bbox = bbox2d_from_object()
     // console.log("name", name, model_library, model_library[name], Object.keys(model_library));
-    scene.add(model_library[name]);
-  }
+    scene.add(model_library[name].clone());
+  }}
 
   // light
   scene.add(alight);
